@@ -10,6 +10,7 @@ Endpoints:
   POST /pending/save       - Save a pending post for approval
   GET  /pending/{post_id}  - Retrieve a pending post
   POST /post/all           - Post to all social media platforms
+  GET  /accounts           - List Blotato connected accounts (find account IDs)
   GET  /health             - Health check
 """
 
@@ -24,7 +25,7 @@ load_dotenv()
 from services.openai_service import analyze_food, generate_caption, generate_image_prompt
 from services.falai_service import enhance_image
 from services.runway_service import generate_video
-from services.social_service import post_to_all, list_profiles
+from services.social_service import post_to_all, list_accounts
 
 app = FastAPI(title="Pizza Social AI", version="1.0.0")
 
@@ -71,12 +72,12 @@ def health():
     return {"status": "ok", "service": "Pizza Social AI"}
 
 
-@app.get("/profiles")
-async def get_profiles():
-    """List all Publer connected profiles — use this to find your profile IDs."""
+@app.get("/accounts")
+async def get_accounts():
+    """List all Blotato connected accounts — use this to find your account IDs."""
     try:
-        profiles = await list_profiles()
-        return {"profiles": profiles}
+        accounts = await list_accounts()
+        return {"accounts": accounts}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
