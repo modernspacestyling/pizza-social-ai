@@ -21,49 +21,20 @@
     },
     {
       "parameters": {
-        "mode": "rules",
-        "rules": {
-          "rules": [
+        "conditions": {
+          "string": [
             {
-              "conditions": {
-                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
-                "conditions": [
-                  {
-                    "id": "cond-photo",
-                    "leftValue": "={{ $json.message?.photo }}",
-                    "rightValue": "",
-                    "operator": { "type": "array", "operation": "notEmpty" }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "Photo"
-            },
-            {
-              "conditions": {
-                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
-                "conditions": [
-                  {
-                    "id": "cond-callback",
-                    "leftValue": "={{ $json.callback_query?.data }}",
-                    "rightValue": "",
-                    "operator": { "type": "string", "operation": "isNotEmpty" }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "Callback"
+              "value1": "={{ $json.message?.photo ? 'photo' : ($json.callback_query?.data ? 'callback' : 'other') }}",
+              "operation": "equal",
+              "value2": "photo"
             }
           ]
-        },
-        "options": {}
+        }
       },
       "id": "node-002",
       "name": "Photo or Callback",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
       "position": [420, 300]
     },
 
@@ -251,22 +222,19 @@
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
-          "conditions": [
+          "string": [
             {
-              "id": "cond-approve",
-              "leftValue": "={{ $json.action }}",
-              "rightValue": "approve",
-              "operator": { "type": "string", "operation": "equals" }
+              "value1": "={{ $json.action }}",
+              "operation": "equal",
+              "value2": "approve"
             }
-          ],
-          "combinator": "and"
+          ]
         }
       },
       "id": "node-013",
       "name": "Approve or Reject",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 1,
       "position": [880, 460]
     },
 
