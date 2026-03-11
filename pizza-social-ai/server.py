@@ -24,7 +24,7 @@ load_dotenv()
 from services.openai_service import analyze_food, generate_caption, generate_image_prompt
 from services.falai_service import enhance_image
 from services.runway_service import generate_video
-from services.social_service import post_to_all
+from services.social_service import post_to_all, list_profiles
 
 app = FastAPI(title="Pizza Social AI", version="1.0.0")
 
@@ -69,6 +69,16 @@ class PostRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "Pizza Social AI"}
+
+
+@app.get("/profiles")
+async def get_profiles():
+    """List all Publer connected profiles — use this to find your profile IDs."""
+    try:
+        profiles = await list_profiles()
+        return {"profiles": profiles}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/pipeline/analyze")

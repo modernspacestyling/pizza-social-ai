@@ -1,126 +1,42 @@
 import httpx
-import asyncio
 import os
 from typing import Dict, Any
 
-# ── Credentials (loaded from .env) ───────────────────────────────────────────
-META_ACCESS_TOKEN     = os.getenv("META_ACCESS_TOKEN")
-INSTAGRAM_ACCOUNT_ID  = os.getenv("INSTAGRAM_ACCOUNT_ID")
-FACEBOOK_PAGE_ID      = os.getenv("FACEBOOK_PAGE_ID")
-TIKTOK_ACCESS_TOKEN   = os.getenv("TIKTOK_ACCESS_TOKEN")
-GOOGLE_ACCESS_TOKEN   = os.getenv("GOOGLE_ACCESS_TOKEN")
-GOOGLE_LOCATION_ID    = os.getenv("GOOGLE_LOCATION_ID")   # e.g. "accounts/123/locations/456"
-SHOP_URL              = os.getenv("PIZZA_SHOP_URL", "https://yourpizzashop.com")
+PUBLER_API_KEY = os.getenv("PUBLER_API_KEY")
+PUBLER_BASE = "https://api.publer.io/v1"
+HEADERS = {
+    "Authorization": f"Bearer {PUBLER_API_KEY}",
+    "Content-Type": "application/json"
+}
 
-GRAPH = "https://graph.facebook.com/v19.0"
+# Profile IDs from your Publer connected accounts
+# Run GET /profiles in the app to find these
+INSTAGRAM_PROFILE_ID  = os.getenv("PUBLER_INSTAGRAM_ID")
+FACEBOOK_PROFILE_ID   = os.getenv("PUBLER_FACEBOOK_ID")
+TIKTOK_PROFILE_ID     = os.getenv("PUBLER_TIKTOK_ID")
+GOOGLE_PROFILE_ID     = os.getenv("PUBLER_GOOGLE_ID")
 
 
-# ── Individual platform posters ───────────────────────────────────────────────
+async def list_profiles() -> list:
+    """Return all Publer connected profiles (use this to find profile IDs)."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.get(f"{PUBLER_BASE}/profiles", headers=HEADERS)
+        r.raise_for_status()
+        return r.json()
 
-async def post_to_instagram(image_url: str, caption: str) -> Dict[str, Any]:
+
+async def _publish(profile_ids: list, text: str, media_urls: list) -> dict:
+    """Create and immediately publish a post via Publer."""
     async with httpx.AsyncClient(timeout=60) as client:
-        # Step 1 – create media container
-        r1 = await client.post(
-            f"{GRAPH}/{INSTAGRAM_ACCOUNT_ID}/media",
-            params={
-                "image_url": image_url,
-                "caption": caption,
-                "access_token": META_ACCESS_TOKEN
-            }
-        )
-        data1 = r1.json()
-        container_id = data1.get("id")
-        if not container_id:
-            return {"platform": "instagram", "status": "failed", "error": data1}
+        payload = {
+            "profile_ids": profile_ids,
+            "text": text,
+            "media_urls": media_urls,
+            "publish_at": None   # None = publish immediately
+        }
+        r = await client.post(f"{PUBLER_BASE}/posts", headers=HEADERS, json=payload)
+        return r.json()
 
-        await asyncio.sleep(5)   # let container process
-
-        # Step 2 – publish
-        r2 = await client.post(
-            f"{GRAPH}/{INSTAGRAM_ACCOUNT_ID}/media_publish",
-            params={
-                "creation_id": container_id,
-                "access_token": META_ACCESS_TOKEN
-            }
-        )
-        data2 = r2.json()
-        if "id" in data2:
-            return {"platform": "instagram", "status": "success", "post_id": data2["id"]}
-        return {"platform": "instagram", "status": "failed", "error": data2}
-
-
-async def post_to_facebook(image_url: str, caption: str) -> Dict[str, Any]:
-    async with httpx.AsyncClient(timeout=60) as client:
-        r = await client.post(
-            f"{GRAPH}/{FACEBOOK_PAGE_ID}/photos",
-            params={
-                "url": image_url,
-                "caption": caption,
-                "access_token": META_ACCESS_TOKEN
-            }
-        )
-        data = r.json()
-        if "id" in data:
-            return {"platform": "facebook", "status": "success", "post_id": data["id"]}
-        return {"platform": "facebook", "status": "failed", "error": data}
-
-
-async def post_to_tiktok(video_url: str, caption: str) -> Dict[str, Any]:
-    async with httpx.AsyncClient(timeout=120) as client:
-        r = await client.post(
-            "https://open.tiktokapis.com/v2/post/publish/video/init/",
-            headers={
-                "Authorization": f"Bearer {TIKTOK_ACCESS_TOKEN}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "post_info": {
-                    "title": caption[:150],
-                    "privacy_level": "PUBLIC_TO_EVERYONE",
-                    "disable_duet": False,
-                    "disable_comment": False,
-                    "disable_stitch": False,
-                    "video_cover_timestamp_ms": 1000
-                },
-                "source_info": {
-                    "source": "PULL_FROM_URL",
-                    "video_url": video_url
-                }
-            }
-        )
-        data = r.json()
-        publish_id = data.get("data", {}).get("publish_id")
-        if publish_id:
-            return {"platform": "tiktok", "status": "success", "publish_id": publish_id}
-        return {"platform": "tiktok", "status": "failed", "error": data}
-
-
-async def post_to_google_business(image_url: str, caption: str) -> Dict[str, Any]:
-    async with httpx.AsyncClient(timeout=60) as client:
-        r = await client.post(
-            f"https://mybusiness.googleapis.com/v4/{GOOGLE_LOCATION_ID}/localPosts",
-            headers={
-                "Authorization": f"Bearer {GOOGLE_ACCESS_TOKEN}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "languageCode": "en-US",
-                "summary": caption[:1500],
-                "callToAction": {
-                    "actionType": "ORDER",
-                    "url": SHOP_URL
-                },
-                "media": [{"mediaFormat": "PHOTO", "sourceUrl": image_url}],
-                "topicType": "STANDARD"
-            }
-        )
-        data = r.json()
-        if "name" in data:
-            return {"platform": "google_business", "status": "success", "post_name": data["name"]}
-        return {"platform": "google_business", "status": "failed", "error": data}
-
-
-# ── Master poster ─────────────────────────────────────────────────────────────
 
 async def post_to_all(
     caption: str,
@@ -128,23 +44,35 @@ async def post_to_all(
     image_url: str,
     video_url: str
 ) -> Dict[str, Any]:
-    """Post to Instagram, Facebook, TikTok, and Google Business simultaneously."""
+    """Post to Instagram, Facebook, TikTok, and Google Business via Publer."""
     full_caption = f"{caption}\n\n{hashtags}"
 
-    results = await asyncio.gather(
-        post_to_instagram(image_url, full_caption),
-        post_to_facebook(image_url, full_caption),
-        post_to_tiktok(video_url, full_caption),
-        post_to_google_business(image_url, caption),
-        return_exceptions=True
-    )
+    # Collect all active profile IDs
+    profile_ids = [
+        pid for pid in [
+            INSTAGRAM_PROFILE_ID,
+            FACEBOOK_PROFILE_ID,
+            TIKTOK_PROFILE_ID,
+            GOOGLE_PROFILE_ID,
+        ] if pid
+    ]
 
-    def safe(r):
-        return r if not isinstance(r, Exception) else {"status": "error", "error": str(r)}
+    if not profile_ids:
+        return {"status": "error", "error": "No Publer profile IDs configured in .env"}
 
-    return {
-        "instagram":       safe(results[0]),
-        "facebook":        safe(results[1]),
-        "tiktok":          safe(results[2]),
-        "google_business": safe(results[3])
-    }
+    # TikTok needs video; others get the enhanced image
+    # Post image to Instagram / Facebook / Google
+    image_profile_ids = [p for p in [INSTAGRAM_PROFILE_ID, FACEBOOK_PROFILE_ID, GOOGLE_PROFILE_ID] if p]
+    video_profile_ids = [p for p in [TIKTOK_PROFILE_ID] if p]
+
+    results = {}
+
+    if image_profile_ids:
+        img_result = await _publish(image_profile_ids, full_caption, [image_url])
+        results["image_post"] = img_result
+
+    if video_profile_ids:
+        vid_result = await _publish(video_profile_ids, full_caption, [video_url])
+        results["video_post"] = vid_result
+
+    return results
