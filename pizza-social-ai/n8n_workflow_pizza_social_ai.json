@@ -1,5 +1,5 @@
 {
-  "name": "🍕 Pizza Social AI",
+  "name": "Pizza Social AI",
   "nodes": [
     {
       "parameters": {
@@ -7,11 +7,11 @@
         "additionalFields": {}
       },
       "id": "node-001",
-      "name": "📱 Telegram Trigger",
+      "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1.1,
       "position": [200, 300],
-      "webhookId": "pizza-social-ai-main",
+      "webhookId": "pizza-social-ai-webhook",
       "credentials": {
         "telegramApi": {
           "id": "REPLACE_WITH_YOUR_TELEGRAM_CRED_ID",
@@ -29,7 +29,7 @@
                 "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
                 "conditions": [
                   {
-                    "id": "photo-rule",
+                    "id": "cond-photo",
                     "leftValue": "={{ $json.message?.photo }}",
                     "rightValue": "",
                     "operator": { "type": "array", "operation": "notEmpty" }
@@ -45,7 +45,7 @@
                 "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
                 "conditions": [
                   {
-                    "id": "callback-rule",
+                    "id": "cond-callback",
                     "leftValue": "={{ $json.callback_query?.data }}",
                     "rightValue": "",
                     "operator": { "type": "string", "operation": "isNotEmpty" }
@@ -61,7 +61,7 @@
         "options": {}
       },
       "id": "node-002",
-      "name": "🔀 Photo or Callback?",
+      "name": "Photo or Callback",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
       "position": [420, 300]
@@ -74,7 +74,7 @@
         "fileId": "={{ $json.message.photo[$json.message.photo.length - 1].file_id }}"
       },
       "id": "node-003",
-      "name": "📥 Get File from Telegram",
+      "name": "Get File from Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [660, 160],
@@ -90,15 +90,15 @@
         "assignments": {
           "assignments": [
             {
-              "id": "photo-url",
+              "id": "assign-url",
               "name": "photo_url",
               "value": "=https://api.telegram.org/file/bot{{ $vars.TELEGRAM_BOT_TOKEN }}/{{ $json.result.file_path }}",
               "type": "string"
             },
             {
-              "id": "chat-id",
+              "id": "assign-chat",
               "name": "chat_id",
-              "value": "={{ $('📱 Telegram Trigger').item.json.message.chat.id }}",
+              "value": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
               "type": "string"
             }
           ]
@@ -106,7 +106,7 @@
         "options": {}
       },
       "id": "node-004",
-      "name": "🔗 Build Photo URL",
+      "name": "Build Photo URL",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [880, 160]
@@ -115,11 +115,11 @@
       "parameters": {
         "resource": "message",
         "chatId": "={{ $json.chat_id }}",
-        "text": "⏳ Got your photo! Analyzing and enhancing...\n\nThis takes about 30 seconds.",
+        "text": "Got your photo! Analyzing and enhancing... This takes about 30 seconds.",
         "additionalFields": {}
       },
       "id": "node-005",
-      "name": "💬 Send Processing Notice",
+      "name": "Send Processing Notice",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [1100, 160],
@@ -143,11 +143,11 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": [\n      {\n        \"type\": \"text\",\n        \"text\": \"You are a food marketing expert. Analyze this pizza/food photo and describe it in detail including appearance, toppings, crust, and what makes it look delicious. Keep it under 100 words.\"\n      },\n      {\n        \"type\": \"image_url\",\n        \"image_url\": { \"url\": \"{{ $('🔗 Build Photo URL').item.json.photo_url }}\" }\n      }\n    ]\n  }],\n  \"max_tokens\": 200\n}",
-        "options": { "response": { "response": { "responseFormat": "json" } } }
+        "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": [\n      {\n        \"type\": \"text\",\n        \"text\": \"You are a food marketing expert. Analyze this pizza/food photo and describe it in detail including appearance, toppings, crust, and what makes it look delicious. Keep it under 100 words.\"\n      },\n      {\n        \"type\": \"image_url\",\n        \"image_url\": { \"url\": \"{{ $('Build Photo URL').item.json.photo_url }}\" }\n      }\n    ]\n  }],\n  \"max_tokens\": 200\n}",
+        "options": {}
       },
       "id": "node-006",
-      "name": "🔍 OpenAI: Analyze Food",
+      "name": "OpenAI Analyze Food",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1320, 160]
@@ -166,20 +166,20 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": \"You are a social media expert for a pizza restaurant. Based on this food description, write an engaging Instagram/Facebook caption and relevant hashtags.\\n\\nFood description: {{ $json.choices[0].message.content }}\\n\\nReturn ONLY valid JSON in this exact format:\\n{\\\"caption\\\": \\\"your caption here\\\", \\\"hashtags\\\": \\\"#pizza #food #delicious ...\\\"}\"\n  }],\n  \"max_tokens\": 300,\n  \"response_format\": { \"type\": \"json_object\" }\n}",
-        "options": { "response": { "response": { "responseFormat": "json" } } }
+        "options": {}
       },
       "id": "node-007",
-      "name": "✍️ OpenAI: Generate Caption",
+      "name": "OpenAI Generate Caption",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1540, 160]
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json.choices[0].message.content;\nlet parsed;\ntry {\n  parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;\n} catch(e) {\n  parsed = { caption: raw, hashtags: '#pizza #food #delicious #italianfood' };\n}\nreturn [{\n  json: {\n    caption: parsed.caption || '',\n    hashtags: parsed.hashtags || '#pizza',\n    food_description: $('🔍 OpenAI: Analyze Food').item.json.choices[0].message.content,\n    photo_url: $('🔗 Build Photo URL').item.json.photo_url,\n    chat_id: $('🔗 Build Photo URL').item.json.chat_id\n  }\n}];"
+        "jsCode": "const raw = $json.choices[0].message.content;\nlet parsed;\ntry {\n  parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;\n} catch(e) {\n  parsed = { caption: raw, hashtags: '#pizza #food #delicious #italianfood' };\n}\nreturn [{\n  json: {\n    caption: parsed.caption || '',\n    hashtags: parsed.hashtags || '#pizza',\n    food_description: $('OpenAI Analyze Food').item.json.choices[0].message.content,\n    photo_url: $('Build Photo URL').item.json.photo_url,\n    chat_id: $('Build Photo URL').item.json.chat_id\n  }\n}];"
       },
       "id": "node-008",
-      "name": "📝 Parse Caption & Hashtags",
+      "name": "Parse Caption and Hashtags",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [1760, 160]
@@ -198,23 +198,20 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"image_url\": \"{{ $json.photo_url }}\",\n  \"prompt\": \"Professional food photography of {{ $json.food_description }}, high resolution, beautiful lighting, appetizing, restaurant quality\",\n  \"strength\": 0.65,\n  \"num_images\": 1,\n  \"enable_safety_checker\": false\n}",
-        "options": {
-          "timeout": 120000,
-          "response": { "response": { "responseFormat": "json" } }
-        }
+        "options": {}
       },
       "id": "node-009",
-      "name": "🎨 fal.ai: Enhance Image",
+      "name": "fal.ai Enhance Image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1980, 160]
     },
     {
       "parameters": {
-        "jsCode": "const falResponse = $json;\nconst caption = $('📝 Parse Caption & Hashtags').item.json.caption;\nconst hashtags = $('📝 Parse Caption & Hashtags').item.json.hashtags;\nconst chatId = $('📝 Parse Caption & Hashtags').item.json.chat_id;\nconst photoUrl = $('📝 Parse Caption & Hashtags').item.json.photo_url;\n\n// Get enhanced image URL from fal.ai response\nlet enhancedUrl = photoUrl; // fallback to original if enhancement fails\nif (falResponse.images && falResponse.images[0] && falResponse.images[0].url) {\n  enhancedUrl = falResponse.images[0].url;\n} else if (falResponse.image && falResponse.image.url) {\n  enhancedUrl = falResponse.image.url;\n}\n\n// Generate unique post ID\nconst postId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);\n\n// Store in workflow static data (persists between executions)\nconst staticData = $getWorkflowStaticData('global');\nstaticData[postId] = {\n  caption,\n  hashtags,\n  enhanced_image_url: enhancedUrl,\n  chat_id: chatId\n};\n\nreturn [{ json: { post_id: postId, enhanced_image_url: enhancedUrl, caption, hashtags, chat_id: chatId } }];"
+        "jsCode": "const falResponse = $json;\nconst caption = $('Parse Caption and Hashtags').item.json.caption;\nconst hashtags = $('Parse Caption and Hashtags').item.json.hashtags;\nconst chatId = $('Parse Caption and Hashtags').item.json.chat_id;\nconst photoUrl = $('Parse Caption and Hashtags').item.json.photo_url;\n\nlet enhancedUrl = photoUrl;\nif (falResponse.images && falResponse.images[0] && falResponse.images[0].url) {\n  enhancedUrl = falResponse.images[0].url;\n} else if (falResponse.image && falResponse.image.url) {\n  enhancedUrl = falResponse.image.url;\n}\n\nconst postId = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData[postId] = {\n  caption,\n  hashtags,\n  enhanced_image_url: enhancedUrl,\n  chat_id: chatId\n};\n\nreturn [{ json: { post_id: postId, enhanced_image_url: enhancedUrl, caption, hashtags, chat_id: chatId } }];"
       },
       "id": "node-010",
-      "name": "💾 Store Post Data",
+      "name": "Store Post Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [2200, 160]
@@ -223,26 +220,13 @@
       "parameters": {
         "resource": "message",
         "chatId": "={{ $json.chat_id }}",
-        "text": "=✅ Your post is ready!\n\n📝 Caption:\n{{ $json.caption }}\n\n🏷️ Hashtags:\n{{ $json.hashtags }}\n\n🖼️ Enhanced image ready for Instagram, Facebook & Google Business\n📱 Also posting to TikTok\n\nApprove to post to all 4 platforms?",
+        "text": "=Your post is ready!\n\nCaption:\n{{ $json.caption }}\n\nHashtags:\n{{ $json.hashtags }}\n\nApprove to post to Instagram, Facebook, TikTok and Google Business?",
         "additionalFields": {
-          "reply_markup": {
-            "inline_keyboard": [
-              [
-                {
-                  "text": "✅ Post to All Platforms",
-                  "callback_data": "={{ 'approve_' + $json.post_id }}"
-                },
-                {
-                  "text": "❌ Discard",
-                  "callback_data": "={{ 'reject_' + $json.post_id }}"
-                }
-              ]
-            ]
-          }
+          "reply_markup": "={{ JSON.stringify({inline_keyboard: [[{text: 'Post to All Platforms', callback_data: 'approve_' + $json.post_id}, {text: 'Discard', callback_data: 'reject_' + $json.post_id}]]}) }}"
         }
       },
       "id": "node-011",
-      "name": "📨 Send Approval Message",
+      "name": "Send Approval Message",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [2420, 160],
@@ -256,10 +240,10 @@
 
     {
       "parameters": {
-        "jsCode": "const callbackData = $json.callback_query.data;\nconst parts = callbackData.split('_');\nconst action = parts[0]; // 'approve' or 'reject'\nconst postId = parts.slice(1).join('_'); // everything after first underscore\nconst chatId = $json.callback_query.message.chat.id;\nconst callbackQueryId = $json.callback_query.id;\n\n// Retrieve stored post data\nconst staticData = $getWorkflowStaticData('global');\nconst postData = staticData[postId];\n\nif (!postData && action === 'approve') {\n  return [{ json: { action: 'error', post_id: postId, chat_id: chatId, callback_query_id: callbackQueryId, error: 'Post data not found - may have expired' } }];\n}\n\nreturn [{ json: {\n  action,\n  post_id: postId,\n  chat_id: chatId,\n  callback_query_id: callbackQueryId,\n  caption: postData?.caption || '',\n  hashtags: postData?.hashtags || '',\n  enhanced_image_url: postData?.enhanced_image_url || ''\n} }];"
+        "jsCode": "const callbackData = $json.callback_query.data;\nconst parts = callbackData.split('_');\nconst action = parts[0];\nconst postId = parts.slice(1).join('_');\nconst chatId = $json.callback_query.message.chat.id;\nconst callbackQueryId = $json.callback_query.id;\n\nconst staticData = $getWorkflowStaticData('global');\nconst postData = staticData[postId];\n\nif (!postData && action === 'approve') {\n  return [{ json: { action: 'error', post_id: postId, chat_id: chatId, callback_query_id: callbackQueryId, error: 'Post data not found' } }];\n}\n\nreturn [{ json: {\n  action,\n  post_id: postId,\n  chat_id: chatId,\n  callback_query_id: callbackQueryId,\n  caption: postData ? postData.caption : '',\n  hashtags: postData ? postData.hashtags : '',\n  enhanced_image_url: postData ? postData.enhanced_image_url : ''\n} }];"
       },
       "id": "node-012",
-      "name": "📋 Parse Callback + Get Data",
+      "name": "Parse Callback Get Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [660, 460]
@@ -270,7 +254,7 @@
           "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
           "conditions": [
             {
-              "id": "approve-check",
+              "id": "cond-approve",
               "leftValue": "={{ $json.action }}",
               "rightValue": "approve",
               "operator": { "type": "string", "operation": "equals" }
@@ -280,7 +264,7 @@
         }
       },
       "id": "node-013",
-      "name": "✅ Approve or Reject?",
+      "name": "Approve or Reject",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [880, 460]
@@ -300,10 +284,10 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"post\": {\n    \"accountId\": \"{{ $vars.BLOTATO_INSTAGRAM_ACCOUNT_ID }}\",\n    \"content\": {\n      \"text\": \"{{ $json.caption }}\\n\\n{{ $json.hashtags }}\",\n      \"mediaUrls\": [\"{{ $json.enhanced_image_url }}\"],\n      \"platform\": \"instagram\"\n    },\n    \"target\": {\n      \"targetType\": \"instagram\"\n    }\n  }\n}",
-        "options": { "response": { "response": { "responseFormat": "json" } } }
+        "options": {}
       },
       "id": "node-014",
-      "name": "📸 Post to Instagram",
+      "name": "Post to Instagram",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1100, 360]
@@ -321,11 +305,11 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"post\": {\n    \"accountId\": \"{{ $vars.BLOTATO_FACEBOOK_ACCOUNT_ID }}\",\n    \"content\": {\n      \"text\": \"{{ $('📋 Parse Callback + Get Data').item.json.caption }}\\n\\n{{ $('📋 Parse Callback + Get Data').item.json.hashtags }}\",\n      \"mediaUrls\": [\"{{ $('📋 Parse Callback + Get Data').item.json.enhanced_image_url }}\"],\n      \"platform\": \"facebook\"\n    },\n    \"target\": {\n      \"targetType\": \"facebook\",\n      \"pageId\": \"{{ $vars.BLOTATO_FACEBOOK_PAGE_ID }}\"\n    }\n  }\n}",
-        "options": { "response": { "response": { "responseFormat": "json" } } }
+        "jsonBody": "={\n  \"post\": {\n    \"accountId\": \"{{ $vars.BLOTATO_FACEBOOK_ACCOUNT_ID }}\",\n    \"content\": {\n      \"text\": \"{{ $('Parse Callback Get Data').item.json.caption }}\\n\\n{{ $('Parse Callback Get Data').item.json.hashtags }}\",\n      \"mediaUrls\": [\"{{ $('Parse Callback Get Data').item.json.enhanced_image_url }}\"],\n      \"platform\": \"facebook\"\n    },\n    \"target\": {\n      \"targetType\": \"facebook\",\n      \"pageId\": \"{{ $vars.BLOTATO_FACEBOOK_PAGE_ID }}\"\n    }\n  }\n}",
+        "options": {}
       },
       "id": "node-015",
-      "name": "👍 Post to Facebook",
+      "name": "Post to Facebook",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1320, 360]
@@ -343,11 +327,11 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"post\": {\n    \"accountId\": \"{{ $vars.BLOTATO_TIKTOK_ACCOUNT_ID }}\",\n    \"content\": {\n      \"text\": \"{{ $('📋 Parse Callback + Get Data').item.json.caption }}\\n\\n{{ $('📋 Parse Callback + Get Data').item.json.hashtags }}\",\n      \"mediaUrls\": [\"{{ $('📋 Parse Callback + Get Data').item.json.enhanced_image_url }}\"],\n      \"platform\": \"tiktok\"\n    },\n    \"target\": {\n      \"targetType\": \"tiktok\"\n    }\n  }\n}",
-        "options": { "response": { "response": { "responseFormat": "json" } } }
+        "jsonBody": "={\n  \"post\": {\n    \"accountId\": \"{{ $vars.BLOTATO_TIKTOK_ACCOUNT_ID }}\",\n    \"content\": {\n      \"text\": \"{{ $('Parse Callback Get Data').item.json.caption }}\\n\\n{{ $('Parse Callback Get Data').item.json.hashtags }}\",\n      \"mediaUrls\": [\"{{ $('Parse Callback Get Data').item.json.enhanced_image_url }}\"],\n      \"platform\": \"tiktok\"\n    },\n    \"target\": {\n      \"targetType\": \"tiktok\"\n    }\n  }\n}",
+        "options": {}
       },
       "id": "node-016",
-      "name": "🎵 Post to TikTok",
+      "name": "Post to TikTok",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1540, 360]
@@ -365,21 +349,21 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"post\": {\n    \"accountId\": \"{{ $vars.BLOTATO_GOOGLE_ACCOUNT_ID }}\",\n    \"content\": {\n      \"text\": \"{{ $('📋 Parse Callback + Get Data').item.json.caption }}\\n\\n{{ $('📋 Parse Callback + Get Data').item.json.hashtags }}\",\n      \"mediaUrls\": [\"{{ $('📋 Parse Callback + Get Data').item.json.enhanced_image_url }}\"],\n      \"platform\": \"googlebusiness\"\n    },\n    \"target\": {\n      \"targetType\": \"googlebusiness\"\n    }\n  }\n}",
-        "options": { "response": { "response": { "responseFormat": "json" } } }
+        "jsonBody": "={\n  \"post\": {\n    \"accountId\": \"{{ $vars.BLOTATO_GOOGLE_ACCOUNT_ID }}\",\n    \"content\": {\n      \"text\": \"{{ $('Parse Callback Get Data').item.json.caption }}\\n\\n{{ $('Parse Callback Get Data').item.json.hashtags }}\",\n      \"mediaUrls\": [\"{{ $('Parse Callback Get Data').item.json.enhanced_image_url }}\"],\n      \"platform\": \"googlebusiness\"\n    },\n    \"target\": {\n      \"targetType\": \"googlebusiness\"\n    }\n  }\n}",
+        "options": {}
       },
       "id": "node-017",
-      "name": "🗺️ Post to Google Business",
+      "name": "Post to Google Business",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1760, 360]
     },
     {
       "parameters": {
-        "jsCode": "// Clean up static data after posting\nconst staticData = $getWorkflowStaticData('global');\nconst postId = $('📋 Parse Callback + Get Data').item.json.post_id;\ndelete staticData[postId];\n\n// Build result summary\nconst ig = $('📸 Post to Instagram').item.json;\nconst fb = $('👍 Post to Facebook').item.json;\nconst tt = $('🎵 Post to TikTok').item.json;\nconst gb = $('🗺️ Post to Google Business').item.json;\n\nconst chatId = $('📋 Parse Callback + Get Data').item.json.chat_id;\n\nconst check = (r) => (r && !r.error) ? '✅' : '⚠️';\n\nreturn [{ json: {\n  chat_id: chatId,\n  summary: `${check(ig)} Instagram\\n${check(fb)} Facebook\\n${check(tt)} TikTok\\n${check(gb)} Google Business`\n} }];"
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst postId = $('Parse Callback Get Data').item.json.post_id;\ndelete staticData[postId];\n\nconst ig = $('Post to Instagram').item.json;\nconst fb = $('Post to Facebook').item.json;\nconst tt = $('Post to TikTok').item.json;\nconst gb = $('Post to Google Business').item.json;\nconst chatId = $('Parse Callback Get Data').item.json.chat_id;\n\nconst check = (r) => (r && !r.error) ? 'OK' : 'Error';\n\nreturn [{ json: {\n  chat_id: chatId,\n  summary: 'Instagram: ' + check(ig) + '\\nFacebook: ' + check(fb) + '\\nTikTok: ' + check(tt) + '\\nGoogle Business: ' + check(gb)\n} }];"
       },
       "id": "node-018",
-      "name": "📊 Build Results",
+      "name": "Build Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [1980, 360]
@@ -388,11 +372,11 @@
       "parameters": {
         "resource": "message",
         "chatId": "={{ $json.chat_id }}",
-        "text": "=🎉 Posted to all platforms!\n\n{{ $json.summary }}\n\nSend another food photo to create more content!",
+        "text": "=Posted to all platforms!\n\n{{ $json.summary }}\n\nSend another food photo to create more content!",
         "additionalFields": {}
       },
       "id": "node-019",
-      "name": "🎉 Success Message",
+      "name": "Success Message",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [2200, 360],
@@ -406,10 +390,10 @@
 
     {
       "parameters": {
-        "jsCode": "// Clean up static data on reject\nconst staticData = $getWorkflowStaticData('global');\nconst postId = $json.post_id;\ndelete staticData[postId];\nreturn [{ json: { chat_id: $json.chat_id } }];"
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst postId = $json.post_id;\ndelete staticData[postId];\nreturn [{ json: { chat_id: $json.chat_id } }];"
       },
       "id": "node-020",
-      "name": "🗑️ Clean Up Rejected",
+      "name": "Clean Up Rejected",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [1100, 580]
@@ -418,11 +402,11 @@
       "parameters": {
         "resource": "message",
         "chatId": "={{ $json.chat_id }}",
-        "text": "🗑️ Post discarded. Send a new photo whenever you're ready!",
+        "text": "Post discarded. Send a new photo whenever you're ready!",
         "additionalFields": {}
       },
       "id": "node-021",
-      "name": "🗑️ Rejection Message",
+      "name": "Rejection Message",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [1320, 580],
@@ -436,96 +420,96 @@
   ],
 
   "connections": {
-    "📱 Telegram Trigger": {
+    "Telegram Trigger": {
       "main": [
-        [{ "node": "🔀 Photo or Callback?", "type": "main", "index": 0 }]
+        [{ "node": "Photo or Callback", "type": "main", "index": 0 }]
       ]
     },
-    "🔀 Photo or Callback?": {
+    "Photo or Callback": {
       "main": [
-        [{ "node": "📥 Get File from Telegram", "type": "main", "index": 0 }],
-        [{ "node": "📋 Parse Callback + Get Data", "type": "main", "index": 0 }]
+        [{ "node": "Get File from Telegram", "type": "main", "index": 0 }],
+        [{ "node": "Parse Callback Get Data", "type": "main", "index": 0 }]
       ]
     },
-    "📥 Get File from Telegram": {
+    "Get File from Telegram": {
       "main": [
-        [{ "node": "🔗 Build Photo URL", "type": "main", "index": 0 }]
+        [{ "node": "Build Photo URL", "type": "main", "index": 0 }]
       ]
     },
-    "🔗 Build Photo URL": {
+    "Build Photo URL": {
       "main": [
-        [{ "node": "💬 Send Processing Notice", "type": "main", "index": 0 }]
+        [{ "node": "Send Processing Notice", "type": "main", "index": 0 }]
       ]
     },
-    "💬 Send Processing Notice": {
+    "Send Processing Notice": {
       "main": [
-        [{ "node": "🔍 OpenAI: Analyze Food", "type": "main", "index": 0 }]
+        [{ "node": "OpenAI Analyze Food", "type": "main", "index": 0 }]
       ]
     },
-    "🔍 OpenAI: Analyze Food": {
+    "OpenAI Analyze Food": {
       "main": [
-        [{ "node": "✍️ OpenAI: Generate Caption", "type": "main", "index": 0 }]
+        [{ "node": "OpenAI Generate Caption", "type": "main", "index": 0 }]
       ]
     },
-    "✍️ OpenAI: Generate Caption": {
+    "OpenAI Generate Caption": {
       "main": [
-        [{ "node": "📝 Parse Caption & Hashtags", "type": "main", "index": 0 }]
+        [{ "node": "Parse Caption and Hashtags", "type": "main", "index": 0 }]
       ]
     },
-    "📝 Parse Caption & Hashtags": {
+    "Parse Caption and Hashtags": {
       "main": [
-        [{ "node": "🎨 fal.ai: Enhance Image", "type": "main", "index": 0 }]
+        [{ "node": "fal.ai Enhance Image", "type": "main", "index": 0 }]
       ]
     },
-    "🎨 fal.ai: Enhance Image": {
+    "fal.ai Enhance Image": {
       "main": [
-        [{ "node": "💾 Store Post Data", "type": "main", "index": 0 }]
+        [{ "node": "Store Post Data", "type": "main", "index": 0 }]
       ]
     },
-    "💾 Store Post Data": {
+    "Store Post Data": {
       "main": [
-        [{ "node": "📨 Send Approval Message", "type": "main", "index": 0 }]
+        [{ "node": "Send Approval Message", "type": "main", "index": 0 }]
       ]
     },
-    "📋 Parse Callback + Get Data": {
+    "Parse Callback Get Data": {
       "main": [
-        [{ "node": "✅ Approve or Reject?", "type": "main", "index": 0 }]
+        [{ "node": "Approve or Reject", "type": "main", "index": 0 }]
       ]
     },
-    "✅ Approve or Reject?": {
+    "Approve or Reject": {
       "main": [
-        [{ "node": "📸 Post to Instagram", "type": "main", "index": 0 }],
-        [{ "node": "🗑️ Clean Up Rejected", "type": "main", "index": 0 }]
+        [{ "node": "Post to Instagram", "type": "main", "index": 0 }],
+        [{ "node": "Clean Up Rejected", "type": "main", "index": 0 }]
       ]
     },
-    "📸 Post to Instagram": {
+    "Post to Instagram": {
       "main": [
-        [{ "node": "👍 Post to Facebook", "type": "main", "index": 0 }]
+        [{ "node": "Post to Facebook", "type": "main", "index": 0 }]
       ]
     },
-    "👍 Post to Facebook": {
+    "Post to Facebook": {
       "main": [
-        [{ "node": "🎵 Post to TikTok", "type": "main", "index": 0 }]
+        [{ "node": "Post to TikTok", "type": "main", "index": 0 }]
       ]
     },
-    "🎵 Post to TikTok": {
+    "Post to TikTok": {
       "main": [
-        [{ "node": "🗺️ Post to Google Business", "type": "main", "index": 0 }]
+        [{ "node": "Post to Google Business", "type": "main", "index": 0 }]
       ]
     },
-    "🗺️ Post to Google Business": {
+    "Post to Google Business": {
       "main": [
-        [{ "node": "📊 Build Results", "type": "main", "index": 0 }]
+        [{ "node": "Build Results", "type": "main", "index": 0 }]
       ]
     },
-    "📊 Build Results": {
+    "Build Results": {
       "main": [
-        [{ "node": "🎉 Success Message", "type": "main", "index": 0 }]
+        [{ "node": "Success Message", "type": "main", "index": 0 }]
       ]
     },
-    "🗑️ Clean Up Rejected": {
+    "Clean Up Rejected": {
       "main": [
-        [{ "node": "🗑️ Rejection Message", "type": "main", "index": 0 }]
+        [{ "node": "Rejection Message", "type": "main", "index": 0 }]
       ]
     }
   },
@@ -537,6 +521,5 @@
     "callerPolicy": "workflowsFromSameOwner",
     "errorWorkflow": ""
   },
-  "tags": [{ "name": "pizza-social-ai" }],
-  "notes": "SETUP REQUIRED — Add these as n8n Variables (Settings → Variables):\n\nTELEGRAM_BOT_TOKEN  = your bot token from @BotFather\nOPENAI_API_KEY      = sk-...\nFAL_API_KEY         = your fal.ai key (fal.ai dashboard → Keys)\nBLOTATO_API_KEY     = your Blotato API key (app.blotato.com → Settings → API)\nBLOTATO_INSTAGRAM_ACCOUNT_ID = from Blotato connected accounts\nBLOTATO_FACEBOOK_ACCOUNT_ID  = from Blotato connected accounts\nBLOTATO_FACEBOOK_PAGE_ID     = your Facebook page ID\nBLOTATO_TIKTOK_ACCOUNT_ID    = from Blotato connected accounts\nBLOTATO_GOOGLE_ACCOUNT_ID    = from Blotato connected accounts\n\nAlso replace REPLACE_WITH_YOUR_TELEGRAM_CRED_ID with your actual Telegram credential ID in n8n."
+  "tags": [{ "name": "pizza-social-ai" }]
 }
